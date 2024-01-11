@@ -1,42 +1,122 @@
 import sqlite3
 
-CREATE_TABLE = """CREATE TABLE caronas (
-                           chat_id TEXT,
-                           user_id TEXT,
+paid_status =   "PAID"
+pending_status = "PENDING"
+
+# SCHEDULE TABLE
+CREATE_TABLE_SCHEDULE = """CREATE TABLE schedule (
+                            chat_id INT,
+                            message_times TEXT
+                            );"""
+INSERT_TRAVEL_TIMES = """INSERT INTO schedule (
+                            chat_id,
+                            message_times
+                            ) VALUES (?, ?);"""
+GET_MESSAGE_TIMES = "SELECT * FROM schedule WHERE chat_id = ?;"
+DELETE_CHAT_SCHEDULE = "DELETE FROM schedule WHERE chat_id = ?;"
+
+# CARONAS TABLE
+CREATE_TABLE_CARONAS = """CREATE TABLE caronas (
+                           chat_id INT,
+                           user_id INT,
+                           first_name TEXT,
+                           last_name TEXT,
                            date TEXT,
-                           num_caronas INT
+                           num_caronas INT,
+                           status TEXT
                            );"""
 INSERT_CARONA = """INSERT INTO caronas (
                             chat_id,
                             user_id,
+                            first_name,
+                            last_name,
                             date,
-                            num_caronas
-                            ) VALUES (?, ?, ?, ?);"""
-GET_CARONA_BY_NAME = "SELECT * FROM caronas WHERE chat_id = ? AND user_id = ?;"                            
-GET_CARONA_BY_DATE = "SELECT * FROM caronas WHERE chat_id = ? AND date = ?;"
-DELETE_CARONA_BY_USER = "DELETE FROM caronas WHERE "
+                            num_caronas,
+                            status
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?);"""
+GET_CARONA_BY_NAME = "SELECT * FROM caronas WHERE chat_id = ? AND user_id = ? AND status = ?;"                            
+GET_CARONA_BY_DATE = "SELECT * FROM caronas WHERE chat_id = ? AND date = ? AND status = ?;"
+DELETE_CARONA_BY_USER = "DELETE FROM caronas WHERE chat_id = ? AND user_id = ? AND status = ?;"
+UPDATE_CARONA_STATUS_BY_USER = f"""UPDATE caronas SET status = {paid_status}
+                                WHERE chat_id = ? AND user_id = ? AND status = {pending_status};"""
 
-def connect():
-    return sqlite3.connect("caronas.db")
+# DATABASES
+CARONAS = "caronas.db"
+SCHEDULE = "schedule.db"
 
-def create_tables(connection):
+
+# GLOBAL DATABASE FUNCTIONS
+def connect(database):
+    return sqlite3.connect(database)
+
+def create_tables(connection, cursor, table_format):
     with connection:
-        connection.execute(CREATE_TABLE)
+        cursor.execute(table_format)
+
+
+
+# SCHEDULE DATABASE FUNCTIONS
+def add_schedule(connection, cursor, chat_id, message_times):
+    with connection:
+        cursor.execute(INSERT_TRAVEL_TIMES, (chat_id, message_times))
+
+def get_chat_schedule(connection, cursor, chat_id):
+    with connection:
+        return cursor.execute(GET_MESSAGE_TIMES, (chat_id,)).fetchall()
+
+def remove_chat_schedule(connection, cursor, chat_id):
+    with connection:
+        cursor.execute(DELETE_CHAT_SCHEDULE, (chat_id,))
+
+def update_chat_schedule(connection, cursor, chat_id, message_times):
+    remove_chat_schedule(connection, cursor, chat_id)
+    add_schedule(connection, cursor, chat_id, message_times)
+
+
+# CARONAS DATABASE FUNCTIONS
+def add_carona(connection, cursor, chat_id, user_id, first_name, last_name, date, num_caronas=1, status=paid_status):
+    with connection:
+        cursor.execute(INSERT_CARONA, (chat_id, user_id, first_name, last_name, date, num_caronas, status))
         
-def add_carona(connection, chat_id, user_id, date, num_caronas):
+def get_carona_by_user(connection, cursor, chat_id, user_id, status):
     with connection:
-        connection.execute(INSERT_CARONA, (chat_id, user_id, date, num_caronas))
+        return cursor.execute(GET_CARONA_BY_NAME, (chat_id, user_id, status)).fetchall()
         
-def get_carona_by_user(connection, chat_id ,user_id):
+def get_carona_by_date(connection, cursor, chat_id, date, status):
     with connection:
-        return connection.execute(GET_CARONA_BY_NAME, (chat_id, user_id)).fetchall()
+        return cursor.execute(GET_CARONA_BY_DATE, (chat_id, date, status)).fetchall()
+
+def update_user_caronas_status(connection, cursor, chat_id, user_id):
+    with connection:
+        cursor.execute(UPDATE_CARONA_STATUS_BY_USER, (chat_id, user_id))
+
+def remove_user_caronas(connection, cursor, chat_id, user_id, status):
+    with connection:
+        cursor.execute(DELETE_CARONA_BY_USER, (chat_id, user_id, status))
         
-def get_carona_by_date(connection, chat_id, date):
-    with connection:
-        return connection.execute(GET_CARONA_BY_DATE, (chat_id, date)).fetchall()
-    
-def remove_user_caronas(connection, chat_id, user_id):
-    with connection:
-        connection.execute(DELETE_CARONA_BY_USER, (chat_id, user_id))
+
+
+
+# CODE TESTING
         
-get_carona_by_user(connect, '2083012766', '2083012766')
+# conn = connect(SCHEDULE)
+# c = conn.cursor()
+# create_tables(conn, c, CREATE_TABLE_SCHEDULE)
+
+# add_schedule(conn, c, '2083012766', "20h30,16h00")
+# print(get_chat_schedule(conn, c, '2083012766'))
+
+
+# add_carona(conn, c, '2083012766', '2083012766', 'X', 'TESTE', '11/01/24 15:38:10', 1, paid_status)
+# add_carona(conn, c, '2083012766', '2083012766', 'Y', 'TESTE', '11/01/24 15:38:10', 1, paid_status)
+# add_carona(conn, c, '2083012766', '2083012765', 'Z', 'TESTE', '11/01/24 15:38:10', 1, pending_status)
+# print(get_carona_by_user(conn, c, '2083012766', '2083012766', paid_status)[0][0])
+
+# print(get_carona_by_date(connection, c, '2083012766', '11/01/24 15:38:10'))
+# remove_user_caronas(connection, c, '2083012766', '2083012766')
+
+
+
+
+
+
