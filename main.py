@@ -16,16 +16,19 @@ from telegram.ext import (
     PollAnswerHandler,
     PollHandler,
     filters,
+    Job,
+    JobQueue,
+    Updater,
 )
 # from datetime import datetime
-import schedule
-import time
+import datetime
 import database
 
 # timezone utc-3
-# QUICK ACTION BUTTONS/ANSWERS
+# QUICK ACTION BUTTONS/ANSWERS AND OTHER CONSTANTS
 TRAVEL = "travel" #"VIAJAR COM OS CARONERS"
 PAY_TRAVELS = "pay" #"PAGAR SERASA DAS CARONAS"
+CARONA_COST = 5
 
 # BOT ID
 TOKEN: Final = '6756594900:AAFOTbGjr8e77T5phlNKn68P2ul8WIRdeP0'
@@ -33,8 +36,8 @@ BOT_USERNAME: Final = '@caroner_manager_bot'
 
 
 # COMMANDS        
-async def reply_privately(update: Update, context: ContextTypes.DEFAULT_TYPE, text_message: str):
-    await context.bot.send_message(chat_id=update.message.from_user.id, 
+async def reply_privately(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id, text_message: str):
+    await context.bot.send_message(chat_id=user_id, 
                                    text=text_message)
     
     
@@ -57,14 +60,14 @@ async def credentials_command(update: Update, context: ContextTypes.DEFAULT_TYPE
                         f'chat {update.message.chat.id}\n'+
                         f'user {update.message.from_user.id}'
                         )
-    await reply_privately(update, context, msg)
+    await reply_privately(update, context, update.message.from_user.id, msg)
     
 
-async def quick_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = [[KeyboardButton("/"+TRAVEL)], [KeyboardButton("/"+PAY_TRAVELS)]]
+async def quick_actions(update: Update, context: ContextTypes.DEFAULT_TYPE, button1=("/"+TRAVEL), button2=("/"+PAY_TRAVELS),text_message="Quem vem carona?"):
+    buttons = [[KeyboardButton(button1)], [KeyboardButton(button2)]]
     await context.bot.send_message(
                             chat_id=update.effective_chat.id, 
-                            text="Carona?", 
+                            text=text_message, 
                             reply_markup=ReplyKeyboardMarkup(buttons)
                             )
  
@@ -79,10 +82,10 @@ async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor = conn.cursor()
     database.add_carona(connection, cursor, chat_id, user_id, first_name, last_name, date, status=database.pending_status)
     
-    total_travels = total_travels(chat_id, user_id)
-    msg = f'in: {update.message.chat.title}\n'+f'caronas: {total_travels}'
+    total = total_travels(chat_id, user_id)
+    msg = f'in: {update.message.chat.title}\n'+f'caronas: {total}'
     
-    await reply_privately(update, context, msg)
+    await reply_privately(update, context, user_id, msg)
 
      
 async def pay_travels_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -102,17 +105,31 @@ async def all_users_pending_payments(update: Update, context: ContextTypes.DEFAU
     chat_id = update.message.chat.id
     
     # position of data in tuple
-    first_name_pos = 1
-    last_name_pos = 2
+    first_name_pos = 0
+    last_name_pos = 1
     
     all_users = database.get_carona_users(connection, cursor, chat_id)
+    user_msg = []
+    final_msg = 'Lista do SERASA\n'
 
     for user_id in all_users.keys():
         user_total = total_travels(chat_id, user_id)
+        user_msg = f'{all_users[user_id][first_name_pos]} {all_users[user_id][last_name_pos]} : {user_total} viagens (R$ {CARONA_COST*user_total},00)\n'
         
+        final_msg = ''.join([final_msg,user_msg])
             
+    await update.message.reply_text(final_msg)
+
+
+# async def ask_owner(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     admins = update.message.chat
+#     for admin in admins:
+#         if admin.status == 'owner':
+#             owner_id = admin.user.id
+#             print(owner_id)        
     
-    await update.message.reply_text(user_message)
+#     msg = "Vai viajar hoje?"
+#     await reply_privately(update, context, owner_id, msg)
     
 
 # NEEDS TO BE FINISHED, ONLY WHEN ALL FUNCTION HAVE BEEN CREATE
@@ -174,16 +191,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update {update} caused error {context.error}')
 
-# Main 
+# MAIN 
 if __name__ == '__main__':
     print('starting...')
     app = Application.builder().token(TOKEN).build()
     conn = database.connect(database.CARONAS)
-    c = conn.cursor()
+    c = conn.cursor()    
+        
+    
+    
     
     # COMMANDS
     app.add_handler(CommandHandler('help', help_command))
-    # app.add_handler(CommandHandler('ask', ask_command))
     # app.add_handler(CommandHandler('poll', poll_command))
     app.add_handler(CommandHandler('quickactions', quick_actions))
     app.add_handler(CommandHandler('credentials', credentials_command))
@@ -191,19 +210,14 @@ if __name__ == '__main__':
     app.add_handler(CommandHandler('pending_users', all_users_pending_payments))
     app.add_handler(CommandHandler(TRAVEL, travel_command))
     app.add_handler(CommandHandler(PAY_TRAVELS, pay_travels_command))
-    
-    
-    # app.add_handler(CommandHandler('reply', reply_privately))
+    # app.add_handler(CommandHandler('ask', ask_owner))    
 
-    
-    # schedule.run_pending()  
-
-    # Messages
+    # MESSAGES
     app.add_handler(MessageHandler(filters.TEXT, handle_message))
     
-    # Errors
+    # ERRORS
     app.add_error_handler(error)
     
-    # Polling
+    # POLLING
     print('polling...')
     app.run_polling(poll_interval=3)

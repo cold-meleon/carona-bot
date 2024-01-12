@@ -116,8 +116,8 @@ def get_carona_users(connection, cursor, chat_id, status=pending_status):
 
 # CODE TESTING
         
-conn = connect(CARONAS)
-c = conn.cursor()
+# conn = connect(CARONAS)
+# c = conn.cursor()
 # create_tables(conn, c, CREATE_TABLE_SCHEDULE)
 
 # add_schedule(conn, c, '2083012766', "20h30,16h00")
@@ -134,5 +134,5 @@ c = conn.cursor()
 
 # update_user_caronas_status(conn, c, '2083012766', '2083012766')
 # print(get_carona_by_user(conn, c, '2083012766', '2083012766', paid_status))
-print(get_carona_users(conn, c, '2083012766', pending_status))
+# print(get_carona_users(conn, c, '2083012766', pending_status))
 
