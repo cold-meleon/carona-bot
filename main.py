@@ -24,8 +24,8 @@ import database
 
 # timezone utc-3
 # QUICK ACTION BUTTONS/ANSWERS
-TRAVEL = "VIAJAR COM OS CARONERS"
-PAY_TRAVELS = "PAGAR SERASA DAS CARONAS"
+TRAVEL = "travel" #"VIAJAR COM OS CARONERS"
+PAY_TRAVELS = "pay" #"PAGAR SERASA DAS CARONAS"
 
 # BOT ID
 TOKEN: Final = '6756594900:AAFOTbGjr8e77T5phlNKn68P2ul8WIRdeP0'
@@ -39,56 +39,58 @@ async def credentials_command(update: Update, context: ContextTypes.DEFAULT_TYPE
                         f'user {update.message.from_user.id}'
                         ) 
     
-async def total_travels_command(update: Update, connection, cursor): 
+async def total_travels_command(update: Update, context: ContextTypes.DEFAULT_TYPE): 
     chat_id = update.effective_chat.id
     user_id = update.message.from_user.id
     first_name = update.message.from_user.first_name
     last_name = update.message.from_user.last_name
     date = update.message.date
-
+    connection = database.connect(database.CARONAS)
+    cursor = conn.cursor()
     travels_sum = 0
     for travel in database.get_carona_by_user(connection, cursor, chat_id, user_id, status=database.pending_status):
         travels_sum += travel[5]
+    await update.message.reply_text(f'{first_name} {last_name}\n'+
+                                    f'total de viagens: {travels_sum}')
+ 
     
-    await update.message.reply_text(f'{first_name} {last_name} viajando\n'+
-                                    f'total de viagens: {travels_sum}') 
-    
-async def travel_command(update: Update, connection, cursor): #, context: ContextTypes.DEFAULT_TYPE
+async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     user_id = update.message.from_user.id
     first_name = update.message.from_user.first_name
     last_name = update.message.from_user.last_name
     date = update.message.date
-
+    connection = database.connect(database.CARONAS)
+    cursor = conn.cursor()
     database.add_carona(connection, cursor, chat_id, user_id, first_name, last_name, date, status=database.pending_status)
+    await total_travels_command(update, context)
 
-    total_travels_command(update, connection, cursor)  
      
-async def pay_travels_command(update: Update, connection, cursor): #context: ContextTypes.DEFAULT_TYPE
+async def pay_travels_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.message.chat.id
     user_id = update.message.from_user.id
     first_name = update.message.from_user.first_name
-    last_name = update.message.from_user.first_name
+    last_name = update.message.from_user.last_name
+    connection = database.connect(database.CARONAS)
+    cursor = conn.cursor()
+    database.update_user_caronas_status(connection, cursor, chat_id, user_id)
+    await update.message.reply_text(f'{first_name} {last_name} tirou o nome do serasa')
+    
 
-    database.update_user_caronas_status(connection, cursor, chat_id, user_id, status=database.pending_status)
-
-    await update.message.reply_text(f'caronas pagas ({first_name} {last_name})')
+# async def all_users_pending_payments(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 
 async def quick_actions(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    buttons = [[KeyboardButton(TRAVEL)], [KeyboardButton(PAY_TRAVELS)]]
+    buttons = [[KeyboardButton("/"+TRAVEL)], [KeyboardButton("/"+PAY_TRAVELS)]]
     await context.bot.send_message(
                             chat_id=update.effective_chat.id, 
                             text="Carona?", 
                             reply_markup=ReplyKeyboardMarkup(buttons)
                             )
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('manager help')
+# async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     await update.message.reply_text("")
 
-
-# async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # await update.message.reply_text('manager started')
 
 # # NEEDS FIXING
 # async def poll_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -111,10 +113,8 @@ def handle_response(text: str, update: Update) -> str:
     user_id = update.message.from_user.id
     date = update.message.date
     
-    if TRAVEL in text:
-        travel_command(update, conn, c, )
-    if PAY_TRAVELS in text:
-        pay_travels_command()
+    if 'data' in text:
+        return f'{update.message.date}'
     else:
         return 'not a command'
 
@@ -151,8 +151,12 @@ if __name__ == '__main__':
     # app.add_handler(CommandHandler('ask', ask_command))
     # app.add_handler(CommandHandler('poll', poll_command))
     # app.add_handler(CommandHandler(TRAVEL, travel_command))
-    app.add_handler(CommandHandler('quick_actions', quick_actions))
+    app.add_handler(CommandHandler('quickactions', quick_actions))
     app.add_handler(CommandHandler('credentials', credentials_command))
+    app.add_handler(CommandHandler('pending', total_travels_command))
+    app.add_handler(CommandHandler(TRAVEL, travel_command))
+    app.add_handler(CommandHandler(PAY_TRAVELS, pay_travels_command))
+
     
     # schedule.run_pending()  
 
