@@ -1,4 +1,5 @@
 import sqlite3 
+import numpy as np
 
 paid_status =   "PAID"
 pending_status = "PENDING"
@@ -95,10 +96,21 @@ def update_user_caronas_status(connection, cursor, chat_id, user_id):
 def remove_user_caronas(connection, cursor, chat_id, user_id, status):
     with connection:
         cursor.execute(DELETE_CARONA_BY_USER, (chat_id, user_id, status))
-        
+
+# returns a dict such as:  user_id : [first_name, last_name]
 def get_carona_users(connection, cursor, chat_id, status=pending_status):
+    users_dict = {}
+    # data posistion in the tuple
+    user_id = 1
+    first_name = 2
+    last_name = 3
     with connection:
-        return cursor.execute(GET_ALL_USERS, (chat_id, status)).fetchall()
+        all_items = cursor.execute(GET_ALL_USERS, (chat_id, status)).fetchall()
+        for item in all_items:
+            users_dict[item[user_id]] = [item[first_name], item[last_name]]
+        return users_dict
+            
+            
 
 
 
@@ -122,5 +134,5 @@ c = conn.cursor()
 
 # update_user_caronas_status(conn, c, '2083012766', '2083012766')
 # print(get_carona_by_user(conn, c, '2083012766', '2083012766', paid_status))
-print(get_carona_users(conn, c, '2083012766', paid_status))
+print(get_carona_users(conn, c, '2083012766', pending_status))
 
