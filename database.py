@@ -141,7 +141,8 @@ def get_carona_users(connection, cursor, chat_id, status=pending_status):
 # add_carona(conn, c, '2083012766', '2083012766', 'Pedro', 'Schnarndorf', 'test time', 1, pending_status)
 # add_carona(conn, c, '2083012766', '2083012766', 'Y', 'TESTE', 'test time 2', 1, paid_status)
 # add_carona(conn, c, '2083012766', '2083012765', 'Z', 'TESTE', 'test time 3', 1, pending_status)
-# print(get_carona_by_user(conn, c, '2083012766', '2083012766', paid_status))
+# print(get_carona_by_user(conn, c, '-4007530723', '2083012766', pending_status))
+# print(get_carona_by_date(conn, c, '-4007530723', '15/01/2024 17:00', pending_status))
 
 # print(get_carona_by_date(conn, c, '2083012766', 'test time', status=pending_status))
 # remove_user_caronas(connection, c, '2083012766', '2083012766')

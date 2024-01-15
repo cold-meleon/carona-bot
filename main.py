@@ -22,9 +22,13 @@ from telegram.ext import (
 )
 # from datetime import datetime
 import datetime
+import time
+import pytz
 import database
 
+
 # timezone utc-3
+br_timezone = pytz.timezone('America/Sao_Paulo')
 # QUICK ACTION BUTTONS/ANSWERS AND OTHER CONSTANTS
 TRAVEL = "travel" #"VIAJAR COM OS CARONERS"
 PAY_TRAVELS = "pay" #"PAGAR SERASA DAS CARONAS"
@@ -77,10 +81,16 @@ async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     first_name = update.message.from_user.first_name
     last_name = update.message.from_user.last_name
-    date = update.message.date
+    date = update.message.date # date format: 2024-01-15 18:05:27+00:00
+        
+    updated_time = date.astimezone(br_timezone)
+    updated_time = time.strftime('%d/%m/%Y %H:%M') # using month number
+    # updated_time = time.strftime('%d/%b/%Y %H:%M') # using month name
+    
     connection = database.connect(database.CARONAS)
     cursor = connection.cursor()
-    database.add_carona(connection, cursor, chat_id, user_id, first_name, last_name, date, status=database.pending_status)
+    
+    database.add_carona(connection, cursor, chat_id, user_id, first_name, last_name, updated_time, status=database.pending_status)
     
     total = total_travels(chat_id, user_id)
     msg = f'in: {update.message.chat.title}\n'+f'caronas: {total}'
@@ -135,8 +145,10 @@ async def all_users_pending_payments(update: Update, context: ContextTypes.DEFAU
 # NEEDS TO BE FINISHED, ONLY WHEN ALL FUNCTION HAVE BEEN CREATE
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("COMMANDS | DESCRIPTION\n"+
-                                        "-quickactions | creates buttons\n"+
+                                        "-help | list of commands\n"+
+                                        "-quick_actions | creates shortcut buttons\n"+
                                         "-credentials | user credentials\n"+
+                                        "-pending_users | all users pending travels\n"+
                                         "-pending | user pending travels\n"+
                                         "-travel | adds user travel\n"+
                                         "-pay | resets pending travels\n\t\t\t(from current group)")
@@ -196,18 +208,18 @@ if __name__ == '__main__':
     print('starting...')
     
     app = Application.builder().token(TOKEN).build()
-    # conn = database.connect(database.CARONAS)
-    # c = conn.cursor() 
+    conn = database.connect(database.CARONAS)
+    c = conn.cursor() 
     
-    # if not database.check_db(database.CARONAS):
-    #     database.create_tables(conn, c, database.CREATE_TABLE_SCHEDULE)
+    if not database.check_db(database.CARONAS):
+        database.create_tables(conn, c, database.CREATE_TABLE_SCHEDULE)
     
     
     
     # COMMANDS
     app.add_handler(CommandHandler('help', help_command))
     # app.add_handler(CommandHandler('poll', poll_command))
-    app.add_handler(CommandHandler('quickactions', quick_actions))
+    app.add_handler(CommandHandler('quick_actions', quick_actions))
     app.add_handler(CommandHandler('credentials', credentials_command))
     app.add_handler(CommandHandler('pending', total_travels))
     app.add_handler(CommandHandler('pending_users', all_users_pending_payments))
@@ -224,4 +236,3 @@ if __name__ == '__main__':
     # POLLING
     print('polling...')
     app.run_polling(poll_interval=3)
-    
