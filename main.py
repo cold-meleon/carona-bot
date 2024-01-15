@@ -43,7 +43,7 @@ async def reply_privately(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     
 def total_travels(chat_id, user_id): 
     connection = database.connect(database.CARONAS)
-    cursor = conn.cursor()
+    cursor = connection.cursor()
     
     # position of data in tuple
     num_travels_pos = 5
@@ -79,7 +79,7 @@ async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     last_name = update.message.from_user.last_name
     date = update.message.date
     connection = database.connect(database.CARONAS)
-    cursor = conn.cursor()
+    cursor = connection.cursor()
     database.add_carona(connection, cursor, chat_id, user_id, first_name, last_name, date, status=database.pending_status)
     
     total = total_travels(chat_id, user_id)
@@ -94,14 +94,14 @@ async def pay_travels_command(update: Update, context: ContextTypes.DEFAULT_TYPE
     first_name = update.message.from_user.first_name
     last_name = update.message.from_user.last_name
     connection = database.connect(database.CARONAS)
-    cursor = conn.cursor()
+    cursor = connection.cursor()
     database.update_user_caronas_status(connection, cursor, chat_id, user_id)
     await update.message.reply_text(f'{first_name} {last_name} tirou o nome do serasa')
     
 
 async def all_users_pending_payments(update: Update, context: ContextTypes.DEFAULT_TYPE):
     connection = database.connect(database.CARONAS)
-    cursor = conn.cursor()
+    cursor = connection.cursor()
     chat_id = update.message.chat.id
     
     # position of data in tuple
@@ -194,10 +194,13 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # MAIN 
 if __name__ == '__main__':
     print('starting...')
+    
     app = Application.builder().token(TOKEN).build()
-    conn = database.connect(database.CARONAS)
-    c = conn.cursor()    
-        
+    # conn = database.connect(database.CARONAS)
+    # c = conn.cursor() 
+    
+    # if not database.check_db(database.CARONAS):
+    #     database.create_tables(conn, c, database.CREATE_TABLE_SCHEDULE)
     
     
     
@@ -221,3 +224,4 @@ if __name__ == '__main__':
     # POLLING
     print('polling...')
     app.run_polling(poll_interval=3)
+    

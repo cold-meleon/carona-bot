@@ -1,5 +1,6 @@
 import sqlite3 
 import numpy as np
+import os
 
 paid_status =   "PAID"
 pending_status = "PENDING"
@@ -44,13 +45,16 @@ UPDATE_CARONA_STATUS_BY_USER = f"""UPDATE caronas
 GET_ALL_USERS = "SELECT * FROM caronas WHERE chat_id = ? AND status = ?;"  
 
 # DATABASES
-CARONAS = "caronas.db"
-SCHEDULE = "schedule.db"
+CARONAS = os.path.abspath("caronas.db")
+SCHEDULE = os.path.abspath("schedule.db")
 
 
 # GLOBAL DATABASE FUNCTIONS
 def connect(database):
     return sqlite3.connect(database)
+
+def check_db(file_name):
+    return os.path.exists(file_name)
 
 def create_tables(connection, cursor, table_format):
     with connection:
@@ -62,6 +66,9 @@ def create_tables(connection, cursor, table_format):
 def add_schedule(connection, cursor, chat_id, message_times):
     with connection:
         cursor.execute(INSERT_TRAVEL_TIMES, (chat_id, message_times))
+    connection.commit()
+    connection.close()
+        
 
 def get_chat_schedule(connection, cursor, chat_id):
     with connection:
@@ -78,8 +85,15 @@ def update_chat_schedule(connection, cursor, chat_id, message_times):
 
 # CARONAS DATABASE FUNCTIONS
 def add_carona(connection, cursor, chat_id, user_id, first_name, last_name, date, num_caronas=1, status=paid_status):
-    with connection:
-        cursor.execute(INSERT_CARONA, (chat_id, user_id, first_name, last_name, date, num_caronas, status))
+    try:
+        with connection:
+            cursor.execute(INSERT_CARONA, (chat_id, user_id, first_name, last_name, date, num_caronas, status))
+    except sqlite3.Error as erro:
+        print(f'erro: {erro}')
+    except Exception as ex:
+        print(f'except: {ex}')
+    connection.commit()
+    connection.close()
         
 def get_carona_by_user(connection, cursor, chat_id, user_id, status):
     with connection:
@@ -115,21 +129,21 @@ def get_carona_users(connection, cursor, chat_id, status=pending_status):
 
 
 # CODE TESTING
-        
+# print(CARONAS)
 # conn = connect(CARONAS)
 # c = conn.cursor()
-# create_tables(conn, c, CREATE_TABLE_SCHEDULE)
+# create_tables(conn, c, CREATE_TABLE_CARONAS)
 
 # add_schedule(conn, c, '2083012766', "20h30,16h00")
 # print(get_chat_schedule(conn, c, '2083012766'))
 
 
-# add_carona(conn, c, '2083012766', '2083012766', 'Pedro', 'Schnarndorf', '11/01/24 15:38:10', 1, pending_status)
-# add_carona(conn, c, '2083012766', '2083012766', 'Y', 'TESTE', '11/01/24 15:38:10', 1, paid_status)
-# add_carona(conn, c, '2083012766', '2083012765', 'Z', 'TESTE', '11/01/24 15:38:10', 1, pending_status)
-# print(get_carona_by_user(conn, c, '2083012766', '2083012766', pending_status))
+# add_carona(conn, c, '2083012766', '2083012766', 'Pedro', 'Schnarndorf', 'test time', 1, pending_status)
+# add_carona(conn, c, '2083012766', '2083012766', 'Y', 'TESTE', 'test time 2', 1, paid_status)
+# add_carona(conn, c, '2083012766', '2083012765', 'Z', 'TESTE', 'test time 3', 1, pending_status)
+# print(get_carona_by_user(conn, c, '2083012766', '2083012766', paid_status))
 
-# print(get_carona_by_date(connection, c, '2083012766', '11/01/24 15:38:10'))
+# print(get_carona_by_date(conn, c, '2083012766', 'test time', status=pending_status))
 # remove_user_caronas(connection, c, '2083012766', '2083012766')
 
 # update_user_caronas_status(conn, c, '2083012766', '2083012766')
